@@ -26,8 +26,12 @@ option_parser = OptionParser.new do |opts|
           options[:zthreshold]=zthreshold
   end
 
-  opts.on("-s", "--studyInfo patfName,patlName,patId,studyDate, accessionNo", Array, "The study information for the report") do |study|
-      options[:study] = study
+  #opts.on("-s", "--studyInfo patfName,patlName,patId,studyDate, accessionNo", Array, "The study information for the report") do |study|
+   #   options[:study] = study
+  #end
+  
+  opts.on("-b betormask", 'chose 0 to bet 1 to mask') do |betormask|
+          options[:betormask]=betormask
   end
 
 end
@@ -35,11 +39,11 @@ end
 option_parser.parse!
 
 LabelColor = ChunkyPNG::Color.rgb(255,0,0)
-patfName = options[:study][0]
-patlName = options[:study][1]
-patId = options[:study][2]
-studyDate = options[:study][3]
-accessionNo = options[:study][4]
+#patfName = options[:study][0]
+#patlName = options[:study][1]
+#patId = options[:study][2]
+#studyDate = options[:study][3]
+#accessionNo = options[:study][4]
 
 dirnames = Dir.entries(options[:dicomdir]).select {|entry| File.directory? File.join(options[:dicomdir],entry) and !(entry =='.' || entry == '..') }
 def read_nifti(nii_file)
@@ -62,18 +66,33 @@ dirnames.each do |name|
         dn = Dcm2nii::Runner.new(pathname,{anonymize: false, reorient_crop:false, reorient:false, output_dir:outputpath})
          # creates an instance of the DCM2NII runner
          dn.command # runs the utility
-        
+        mostrar= dn.get_nii
+      
          if name=="VOL_AX"
          original_image = dn.get_nii # Returns the generated nifti file
+      
          output_vol=outputpath
          end
          
 end
 
 # PERFORM BRAIN EXTRACTION
+if options[:betormask]==0
 bet = FSL::BET.new(original_image, output_vol, {fi_threshold: 0.5, v_gradient: 0})
 bet.command
 bet_image = bet.get_result
+else
+  brain_image1="#{output_vol}/brainmask.nii.gz "
+  niiimage="#{output_vol}/#{original_image} "
+ 
+  `standard_space_roi niiimage brain_image1 -b`
+  
+  bet = FSL::BET.new(brain_image1, output_vol, {fi_threshold: 0.15, v_gradient: 0})
+  bet.command
+  bet_image = bet.get_result
+  
+end
+  
 
 
 #FEAT command line
@@ -84,7 +103,7 @@ nifftifile= Dir.glob("#{options[:outputdir]}/#{dirnames[0]}/*.gz")
 nifftifile=nifftifile[0];
 puts 'niftifile'
 puts nifftifile
-`cp /Users/catalinabustamante/codigo/fMRI/design_tem.fsf #{options[:outputdir]}/#{dirnames[0]}`
+`cp /Users/catalinabustamante/Documents/codigo/fMRI/design_tem.fsf #{options[:outputdir]}/#{dirnames[0]}`
 path="#{options[:outputdir]}/#{dirnames[0]}/design_tem.fsf"
 design = File.read(path) 
 replace=design.gsub(/set fmri\(([npts)]+)\) 80/,"set fmri(npts) #{nvolumes}")
