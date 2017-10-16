@@ -4,7 +4,6 @@
 require 'rubygems'
 require 'dcm2nii-ruby'
 require 'fsl-ruby'
-require 'narray'
 require 'nifti'
 require 'optparse'
 require 'find'
@@ -44,7 +43,6 @@ betormask=options[:betormask]
 #zthreshold=options[:zthreshold]
 nvolumes=120
 zthreshold=2.3
-trvalue=2.0000000000
 
 
 # CAMBIAR EL NOMBRE DE LA CARPETA QUE CONTIENE LOS DICOMS
@@ -52,16 +50,13 @@ dirname= Dir.entries(inidicom).select {|entry| File.directory? File.join(inidico
 
 completepath="#{inidicom}/#{dirname[0]}"
 newname="#{inidicom}/0DICOM"
-niifile="#{inidicom}/NIFTI"
-
-FileUtils.mkdir niifile
 
 FileUtils.mv completepath, newname
 
 #CONVERT DICOM TO NIFTI
 #SE CORRE EL COMANDO DE MCVERTER
 
-`mcverter -f fsl -x -d -n -o #{niifile} #{inidicom}`
+`mcverter -f fsl -x -d -n -o #{inidicom} #{inidicom}`
 
 dirnewname= Dir.entries(inidicom).select {|entry| File.directory? File.join(inidicom,entry) and !(entry =='.' || entry == '..') }
 
@@ -76,22 +71,21 @@ volaxfolder=1
 flair=1
 dirniilist.each do |name|
   
-  isvol=name.scan("VOL_AX")
+  isvol=name.scan("MPRAGE")
   
   if isvol.empty?
     else
-      puts "el volumetrico"
       volaxfolder=name
   end
   
-  isflair=name.scan("VISTA")
+  isflair=name.scan("FL")
   
   if isflair.empty?
   else
     flair=name
   end
 end
-puts "volaxial"
+
 puts volaxfolder
 dirniilist.delete(volaxfolder)
 dirniilist.delete(flair)
@@ -102,10 +96,11 @@ volax=volaxa[0]
 newvolax="#{dirniipath}/#{volaxfolder}/volax.nii"
 FileUtils.mv volax, newvolax
 
-
+puts "por aqui pase"
 
 flair=Dir["#{dirniipath}/#{flair}/*.nii"]
 flairdir=Dir["#{dirniipath}/#{flair}"]
+flair_reg="#{flairdir}/flair_reg.nii"
 #### END METHODS ####
 
 beginning_time = Time.now
@@ -147,14 +142,14 @@ if isvol.empty?
   `cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem.fsf #{dirniipath}/#{dn}/design_tem.fsf`
   else
     puts "ortogonal"
-  `cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem_o.fsf #{dirniipath}/#{dn}/design_tem.fsf`
+  `cp cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem_o.fsf #{dirniipath}/#{dn}/design_tem.fsf`
 end
 
 
 path="#{dirniipath}/#{dn}/design_tem.fsf"
 puts path
 design = File.read(path) 
-replace = design.gsub(/set fmri\(([npts)]+)\) 80/,"set fmri(npts) #{nvolumes}")
+replace=design.gsub(/set fmri\(([npts)]+)\) 80/,"set fmri(npts) #{nvolumes}")
 replace = replace.gsub(/set fmri\(([z_thresh)]+)\) 2.3/, "set fmri(z_thresh) #{zthreshold}")
 replace = replace.gsub(/set feat_files\(([1)]+)\) pathf/, "set feat_files(1) \"#{nifftifile}\"")
 replace = replace.gsub(/set highres_files\(([1)]+)\) paths/, "set highres_files(1) \"#{bet_image}\"")
@@ -166,26 +161,18 @@ featpath=featpath[0]
     puts featpath
 
 `/usr/local/fsl/bin/renderhighres #{featpath} standard highres 1 1 15`
+thpath=Dir.glob("#{featpath}/hr/thresh_zstat1.nii.gz")
+puts flair
+puts thpath
+thpath_reg=Dir.glob("#{featpath}/hr/thresh_zstat1_reg.nii.gz")
+puts thpath_reg
+matriz=Dir.glob("#{featpath}/reg/standard2highres.mat")
+puts matriz
+  `flirt -in #{thpath} -ref #{flair} -out #{thpath_reg} -init #{matriz} -applyxfm`
 
-matriz= "#{featpath}/hr/background_reg.mat" 
-
-`flirt -in #{featpath}/hr/background.nii.gz -ref #{bet_image} -out #{featpath}/hr/background_reg.nii.gz -omat #{matriz} -bins 256 -cost corratio -searchrx -90 90 -searchry -90 90 -searchrz -90 90 -dof 12  -interp trilinear`
-
-thpath=Dir.glob("#{featpath}/hr/thresh_zstat*.nii.gz")
-
-
-thpath.each do |th|
-  puts th
-  threg=th.gsub('.nii.gz', '_reg.nii.gz')
-  puts threg
-  puts flairdir
-  puts matriz
-  `flirt -in #{th} -ref #{bet_image} -init #{matriz} -out #{threg} -applyxfm`
-end
 
 
 end
-
 
 end_time = Time.now
 puts "Time elapsed #{(end_time - beginning_time)} seconds"

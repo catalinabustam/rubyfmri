@@ -44,7 +44,7 @@ betormask=options[:betormask]
 #zthreshold=options[:zthreshold]
 nvolumes=120
 zthreshold=2.3
-trvalue=2.0000000000
+trvalue=3.0000000000
 
 
 # CAMBIAR EL NOMBRE DE LA CARPETA QUE CONTIENE LOS DICOMS
@@ -84,7 +84,7 @@ dirniilist.each do |name|
       volaxfolder=name
   end
   
-  isflair=name.scan("VISTA")
+  isflair=name.scan("FLAIR")
   
   if isflair.empty?
   else
@@ -144,17 +144,17 @@ isvol=nifftifile.scan("ORTO")
 
 if isvol.empty?
   puts "no ortogonal"
-  `cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem.fsf #{dirniipath}/#{dn}/design_tem.fsf`
+  `cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem_1_5_120.fsf #{dirniipath}/#{dn}/design_tem_1_5_120.fsf`
   else
     puts "ortogonal"
-  `cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem_o.fsf #{dirniipath}/#{dn}/design_tem.fsf`
+  `cp /Users/investigacioniatm/Documents/codigo/rubyfmri/design_tem_1_5_120_o.fsf #{dirniipath}/#{dn}/design_tem_1_5_120.fsf`
 end
 
 
-path="#{dirniipath}/#{dn}/design_tem.fsf"
+path="#{dirniipath}/#{dn}/design_tem_1_5_120.fsf"
 puts path
 design = File.read(path) 
-replace = design.gsub(/set fmri\(([npts)]+)\) 80/,"set fmri(npts) #{nvolumes}")
+replace = design.gsub(/set fmri\(([npts)]+)\) 120/,"set fmri(npts) #{nvolumes}")
 replace = replace.gsub(/set fmri\(([z_thresh)]+)\) 2.3/, "set fmri(z_thresh) #{zthreshold}")
 replace = replace.gsub(/set feat_files\(([1)]+)\) pathf/, "set feat_files(1) \"#{nifftifile}\"")
 replace = replace.gsub(/set highres_files\(([1)]+)\) paths/, "set highres_files(1) \"#{bet_image}\"")
